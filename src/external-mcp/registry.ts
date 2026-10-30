@@ -9,7 +9,7 @@ const shared = {
   id: identifier,
   name: z.string().trim().min(1).max(120),
   enabled: z.boolean().default(false),
-  allowedTools: z.array(z.string().min(1)).max(200).default([]),
+  allowedTools: z.array(z.string().min(1)).max(500).default([]),
 }
 
 const stdio = z

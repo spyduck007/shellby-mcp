@@ -57,6 +57,15 @@ test("empty registry starts without installing servers and rejects invalid defin
   )
 })
 
+test("registry can preserve a large tool list", async (t) => {
+  const root = await tempDir(t, "external-mcp-many-tools-")
+  const manager = new ExternalMcpManager(root)
+  t.after(() => manager.close())
+  const names = Array.from({ length: 229 }, (_, i) => `tool_${i}`)
+  await manager.save(echoServer("many", names, false))
+  assert.deepEqual((await manager.registry.read()).servers[0]?.allowedTools, names)
+})
+
 test("a failed external MCP connection is isolated and can recover", {
   timeout: 25_000,
 }, async (t) => {

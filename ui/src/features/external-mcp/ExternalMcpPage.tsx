@@ -82,7 +82,32 @@ export function ExternalMcpPage() {
     })
   }
 
+  async function allowAllTools() {
+    const definition = servers.find((server) => server.id === selected)
+    if (!definition || tools.length === 0) return
+    const unapproved = tools.filter((tool) => !tool.allowed)
+    if (unapproved.length === 0) return
+
+    const allowedTools = [...new Set([...definition.allowedTools, ...tools.map((tool) => tool.name)])]
+    if (allowedTools.length > 500) {
+      setError("The server's approval list exceeds the 500-tool limit.")
+      return
+    }
+
+    if (
+      !window.confirm(
+        `Enable ${unapproved.length} additional tools on ${definition.name} (${allowedTools.length} total)?\n\nThis grants Shellby permission to call every discovered tool, including tools that may run programs, change files, or access the network. No tools will be executed by enabling them.`
+      )
+    ) return
+
+    await execute(async () => {
+      await api(`/${encodeURIComponent(definition.id)}`, jsonRequest("PUT", { ...definition, allowedTools }))
+      setTools((current) => current.map((tool) => ({ ...tool, allowed: true })))
+    })
+  }
+
   const active = status.find((server) => server.id === selected)
+  const approvedCount = tools.filter((tool) => tool.allowed).length
   return (
     <main className="min-h-screen">
       <WorkspaceHeader title="External MCP Servers" description="Manage local and remote MCP connections" leading={<div className="flex size-10 items-center justify-center rounded-lg border bg-card">MCP</div>}>
@@ -119,7 +144,16 @@ export function ExternalMcpPage() {
         </div>
         {draft && <ServerEditor key={draft.id} definition={draft} busy={busy} onCancel={() => setDraft(null)} onSave={(value) => void save(value)} />}
         {selected && !draft && <section className="rounded-xl border bg-card p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3"><h2 className="font-semibold">{selected} tools</h2><Button variant="outline" size="sm" disabled={busy || !active?.enabled} onClick={() => void selectServer(selected, true)}>Rediscover</Button></div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="font-semibold">{selected} tools</h2>
+              {tools.length > 0 && <p className="text-xs text-muted-foreground">{approvedCount} of {tools.length} tools approved</p>}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" disabled={busy || !active?.enabled} onClick={() => void selectServer(selected, true)}>Rediscover</Button>
+              <Button size="sm" disabled={busy || !active?.enabled || tools.length === 0 || approvedCount === tools.length} onClick={() => void allowAllTools()}>Enable all tools</Button>
+            </div>
+          </div>
           {!active?.enabled && <p className="mt-2 text-sm text-muted-foreground">Enable this server in Edit before discovering or calling tools.</p>}
           {tools.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No tools loaded yet.</p>}
           <div className="mt-3 divide-y">{tools.map((tool) => <div key={tool.name} className="flex flex-wrap items-center gap-3 py-3">
