@@ -3,13 +3,15 @@ import { static as expressStatic, Router } from "express"
 import { createExternalMcpDashboardRouter } from "../external-mcp/dashboard-router.js"
 import type { ExternalMcpManager } from "../external-mcp/manager.js"
 import type { AgentObserver } from "./observer.js"
+import { readAuditUsage } from "./usage-analytics.js"
 
 const LEADING_URL_SEPARATORS = /^[\\/]+/u
 
 /** Mount at the server root: dashboard assets, `/editor`, and `/api/*`. */
 export function createDashboardRouter(
   agentObserver: AgentObserver,
-  externalMcp?: ExternalMcpManager
+  externalMcp?: ExternalMcpManager,
+  auditPath = fileURLToPath(new URL("../../agent-commands.yaml", import.meta.url))
 ): Router {
   const router = Router()
   if (externalMcp) router.use(createExternalMcpDashboardRouter(externalMcp))
@@ -22,6 +24,17 @@ export function createDashboardRouter(
 
   router.get("/api/agents", (_req, res) => {
     res.json({ agents: agentObserver.listAgents() })
+  })
+
+  // The audit log includes command text and tool outputs. Return only parsed
+  // token / timing aggregates; never expose its contents to the browser.
+  router.get("/api/usage", async (_req, res) => {
+    try {
+      res.setHeader("Cache-Control", "no-store")
+      res.json(await readAuditUsage(auditPath))
+    } catch {
+      res.status(503).json({ error: "Usage history is temporarily unavailable." })
+    }
   })
 
   router.get("/api/events", (req, res) => {

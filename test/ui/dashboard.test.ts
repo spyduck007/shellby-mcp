@@ -110,6 +110,59 @@ test("dashboard interactions", {
     }
   )
 
+  await t.test("overview shows agent details and keeps costs labeled as estimates", async (t) => {
+    const observer = createAgentObserver()
+    publishCall(observer, identity, "shell_run", { command: "fixture" }).finish()
+    const page = await openDashboard(t, browser, observer)
+    await page.getByRole("heading", { name: "Usage at a glance" }).waitFor()
+    await page
+      .getByRole("region", { name: "Usage overview" })
+      .getByText("Current MCP session")
+      .waitFor()
+    await page.getByRole("button", { name: "Open agent agent-1" }).click()
+    const detail = page.getByRole("dialog", { name: "Agent details: agent-1" })
+    await detail.getByRole("heading", { name: "dashboard test" }).waitFor()
+    await detail.getByText("Estimated value").waitFor()
+    assert.equal(new URL(page.url()).searchParams.get("agent"), "agent-1")
+    await detail.getByRole("button", { name: "Close agent details" }).click()
+    await detail.waitFor({ state: "detached" })
+    assert.equal(new URL(page.url()).searchParams.has("agent"), false)
+  })
+
+  await t.test("historical usage cards and charts use the read-only summary", async (t) => {
+    const observer = createAgentObserver()
+    publishCall(observer, identity, "shell_run", { command: "fixture" }).finish()
+    const parts = new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Los_Angeles",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(Date.now())
+    const part = (type: string) => parts.find((value) => value.type === type)?.value
+    const date = `${part("year")}-${part("month")}-${part("day")}`
+    const page = await openDashboard(t, browser, observer, (app) => {
+      app.get("/api/usage", (_req, res) =>
+        res.json({
+          source: "audit-log",
+          dateBasis: "America/Los_Angeles",
+          partial: false,
+          total: { calls: 1, inputTokens: 100_000, outputTokens: 200_000, errors: 0 },
+          days: [{ date, calls: 1, inputTokens: 100_000, outputTokens: 200_000, errors: 0 }],
+          agents: [],
+        })
+      )
+    })
+    await page.getByRole("region", { name: "Usage trend" }).getByText("$2.20").waitFor()
+    await page.getByRole("region", { name: "Usage overview" }).getByText("$2.20").first().waitFor()
+    const chart = page.getByLabel("Daily estimated cost chart")
+    await chart.locator(".group").first().waitFor()
+    await page.getByRole("button", { name: "30d" }).click()
+    assert.equal(
+      await page.getByRole("button", { name: "30d" }).getAttribute("aria-pressed"),
+      "true"
+    )
+  })
+
   await t.test(
     "rooms idle slowly, pause offscreen or hidden, and resume new activity",
     async (t) => {
@@ -184,6 +237,9 @@ test("dashboard interactions", {
     const observer = createAgentObserver()
     publishCall(observer, identity, "shell_run", { command: "finished" }).finish()
     const page = await openDashboard(t, browser, observer)
+    // The operations overview sits above agent workspaces. Bring the room into
+    // view before checking its asset-driven redraw behavior.
+    await page.locator('canvas[data-animated="true"]').first().scrollIntoViewIfNeeded()
     let acceptFloor: (route: Route) => void = () => undefined
     const requestedFloor = new Promise<Route>((resolve) => {
       acceptFloor = resolve
@@ -264,14 +320,14 @@ test("dashboard interactions", {
         publishCall(observer, { sessionId: id, agent: id }, "shell_run", { command: id })
       }
       const page = await openDashboard(t, browser, observer)
-      assert.equal(await page.getByRole("region").count(), 7)
+      assert.equal(await page.locator('[role="region"]').count(), 7)
       for (const member of family.slice(1)) {
         bindAgentParent(member.sessionId, parent.sessionId)
       }
       const parentCard = page.getByRole("region", { name: parent.agent, exact: true })
       const tiles = page.getByRole("group", { name: `Agent family ${parent.agent}` })
       await tiles.getByRole("button").nth(3).waitFor()
-      assert.equal(await page.getByRole("region").count(), 3)
+      assert.equal(await page.locator('[role="region"]').count(), 3)
       assert.equal(await page.locator('canvas[data-animated="true"]').count(), 3)
       assert.equal(await tiles.locator('canvas[data-animated="false"]').count(), 4)
       const tileBoxes = await tiles.getByRole("button").evaluateAll((elements) =>
@@ -283,7 +339,7 @@ test("dashboard interactions", {
       assert.equal(tileBoxes[0]!.y, tileBoxes[2]!.y)
       assert.ok(tileBoxes[3]!.y > tileBoxes[0]!.y)
       const cardBoxes = await page
-        .getByRole("region")
+        .locator('[role="region"]')
         .evaluateAll((elements) => elements.map((el) => el.getBoundingClientRect().y))
       assert.equal(cardBoxes[0], cardBoxes[1])
       assert.ok(cardBoxes[2]! > cardBoxes[0]!)
@@ -351,7 +407,7 @@ test("dashboard interactions", {
       await page.getByText("Dismissed agents (1)", { exact: true }).click()
       await page.getByRole("button", { name: `Restore ${parent.agent}`, exact: true }).waitFor()
       assert.equal(
-        await page.getByRole("region").count(),
+        await page.locator('[role="region"]').count(),
         3,
         "Hidden parents do not split siblings into separate cards"
       )

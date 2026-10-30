@@ -13,6 +13,7 @@ import { WorkspaceHeader } from "./components/WorkspaceHeader"
 import { RoomEditor } from "./features/agent-room/editor/RoomEditor"
 import { AgentCard } from "./features/dashboard/AgentCard"
 import { groupAgentFamilies } from "./features/dashboard/agent-families"
+import { OperationsOverview } from "./features/dashboard/OperationsOverview"
 import { useDashboardAgents } from "./features/dashboard/useDashboardAgents"
 import { ExternalMcpPage } from "./features/external-mcp/ExternalMcpPage"
 
@@ -51,9 +52,9 @@ function Dashboard() {
     <main className="min-h-screen">
       <WorkspaceHeader
         title="Shellby Control"
-        description={`${activeCount} active · ${agents.length + dismissedAgents.length} observed`}
+        description="Local agent operations and usage"
         leading={
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-accent/20 bg-accent-muted text-accent shadow-panel">
+          <div className="flex size-9 shrink-0 items-center justify-center rounded-md border bg-card text-foreground">
             <IconActivity className="size-5" />
           </div>
         }
@@ -78,7 +79,7 @@ function Dashboard() {
         </Button>
       </WorkspaceHeader>
 
-      <div className="mx-auto max-w-375 px-4 py-5 lg:px-6">
+      <div className="mx-auto max-w-375 px-4 py-7 lg:px-6">
         {error ? (
           <div className="mb-5 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
             {error}
@@ -89,7 +90,24 @@ function Dashboard() {
           <div className="py-24 text-center text-sm text-muted-foreground">
             Loading Shellby agents...
           </div>
-        ) : agents.length === 0 ? (
+        ) : (
+          <OperationsOverview
+            agents={[...agents, ...dismissedAgents]}
+            now={now}
+            onDismissInstruction={dismissInstruction}
+          />
+        )}
+
+        <div className="mb-4 flex items-end justify-between gap-3 border-b pb-3">
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight">Agent workspaces</h2>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Live rooms, recent calls, and instructions · {activeCount} active
+            </p>
+          </div>
+        </div>
+
+        {loading ? null : agents.length === 0 ? (
           <div className="mx-auto max-w-lg rounded-xl border bg-card px-6 py-20 text-center shadow-card">
             <IconActivity className="mx-auto size-8 text-muted-foreground" />
             <h2 className="mt-4 text-lg font-semibold">
@@ -102,7 +120,7 @@ function Dashboard() {
             </p>
           </div>
         ) : (
-          <div className="grid items-start gap-5 lg:grid-cols-2">
+          <div className="grid items-start gap-4 lg:grid-cols-2">
             {groupAgentFamilies(agents, dismissedAgents).map((family) => (
               <AgentCard
                 key={family.rootId}

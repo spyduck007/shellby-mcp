@@ -16,8 +16,8 @@
   --color-success: light-dark(#047857, #6ee7b7);
   --color-success-muted: light-dark(#ecfdf5, #102d25);
   --color-warning: light-dark(#a16207, #fcd34d);
-  --color-accent: light-dark(#4f5fc5, #a0adff);
-  --color-accent-muted: light-dark(#edf0ff, #222c4e);
+  --color-accent: light-dark(#475569, #cbd5e1);
+  --color-accent-muted: light-dark(#f1f5f9, #242b34);
   --color-danger-muted: light-dark(#fef2f2, #3b2024);
   --color-family-parent: light-dark(#7c3aed, #b49aff);
   --radius-sm: calc(var(--radius) - 4px);
@@ -31,18 +31,18 @@
 
 :root {
   color-scheme: light dark;
-  --radius: 0.75rem;
-  --background: light-dark(#f3f5fa, #0b101b);
-  --foreground: light-dark(#172033, #edf1f8);
-  --card: light-dark(#ffffff, #141c2a);
+  --radius: 0.65rem;
+  --background: light-dark(#f7f8fa, #0d1014);
+  --foreground: light-dark(#19212b, #e7eaef);
+  --card: light-dark(#ffffff, #151a20);
   --card-foreground: var(--foreground);
-  --surface: light-dark(#f8faff, #101724);
-  --muted: light-dark(#eaf0f7, #1d283b);
-  --muted-foreground: light-dark(#617086, #98a6bd);
-  --border: light-dark(#dce3ef, #283449);
-  --input: light-dark(#ced8e8, #303f57);
-  --primary: light-dark(#4e60cd, #5265da);
-  --primary-foreground: #ffffff;
+  --surface: light-dark(#fafbfc, #11161d);
+  --muted: light-dark(#f0f2f5, #20262e);
+  --muted-foreground: light-dark(#626d7b, #99a2ae);
+  --border: light-dark(#e3e6eb, #2d333c);
+  --input: light-dark(#ccd2dc, #373f4b);
+  --primary: light-dark(#253040, #d7dde6);
+  --primary-foreground: light-dark(#ffffff, #11161d);
   --destructive: light-dark(#b91c1c, #fca5a5);
 }
 
@@ -76,12 +76,6 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background: var(--background);
-  background-image: radial-gradient(
-    ellipse at 50% 0%,
-    light-dark(#e6eafa80, #2730572e),
-    transparent 60%
-  );
-  background-attachment: fixed;
   color: var(--foreground);
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
