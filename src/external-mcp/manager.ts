@@ -190,7 +190,10 @@ export class ExternalMcpManager {
         cwd: definition.cwd,
         env,
         stderr: "ignore",
-        maxBufferSize: 1_000_000,
+        // Large legitimate MCP servers can return multi-megabyte tools/list
+        // responses (REA 6.8.0 advertises 229 tools, approximately 3.5 MB).
+        // Keep an explicit bound without truncating discovery messages.
+        maxBufferSize: 8 * 1_024 * 1_024,
       })
     } else {
       const headers: Record<string, string> = {}

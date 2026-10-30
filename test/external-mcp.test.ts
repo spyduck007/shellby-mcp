@@ -74,6 +74,25 @@ test("a failed external MCP connection is isolated and can recover", {
   assert.equal((restored.content[0] as { text: string }).text, "recovered")
 })
 
+test("multi-megabyte stdio tool catalogs do not close the MCP connection", {
+  timeout: 25_000,
+}, async (t) => {
+  const root = await tempDir(t, "external-mcp-large-")
+  const manager = new ExternalMcpManager(root)
+  t.after(() => manager.close())
+  const definition = echoServer("large")
+  definition.args = [
+    "--import",
+    "tsx",
+    join(import.meta.dirname, "..", "scripts", "test-fixtures", "external-mcp-large.ts"),
+  ]
+  await manager.save(definition)
+  const tools = await manager.discover("large")
+  assert.equal(tools.length, 90)
+  assert.ok(tools[0]?.description?.length && tools[0].description.length <= 350)
+  assert.equal((await manager.list())[0]?.state, "connected")
+})
+
 test("stdio discovery, duplicate tool names, per-tool approvals, persistence, and shutdown", {
   timeout: 25_000,
 }, async (t) => {
