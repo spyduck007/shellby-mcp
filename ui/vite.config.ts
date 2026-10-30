@@ -5,6 +5,9 @@ import { defineConfig } from "vite"
 
 import { loadPublicConfig } from "../src/public-config.cts"
 
+const shellbyConfig = loadPublicConfig(fileURLToPath(new URL("../.shellby/config.toml", import.meta.url)))
+const dashboardPort = shellbyConfig.ngrok.enabled ? shellbyConfig.port + 1 : shellbyConfig.port
+
 export default defineConfig({
   plugins: [
     react({
@@ -17,7 +20,7 @@ export default defineConfig({
   server: {
     proxy: {
       "/api": {
-        target: `http://127.0.0.1:${loadPublicConfig(fileURLToPath(new URL("../.shellby/config.toml", import.meta.url))).port}`,
+        target: `http://127.0.0.1:${dashboardPort}`,
         changeOrigin: true,
       },
     },

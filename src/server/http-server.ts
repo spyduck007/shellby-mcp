@@ -21,6 +21,7 @@ export interface RunningMcpServer {
   host: string
   port: number
   url: string
+  dashboardUrl?: string
   close: () => Promise<void>
 }
 
@@ -36,6 +37,7 @@ export interface McpHttpProfileOverrides {
   host?: string
   port?: number
   instanceId?: string
+  dashboardPort?: number
 }
 
 export async function startMcpHttpServer(
@@ -102,10 +104,14 @@ export async function startMcpHttpServer(
     await handleMcpRequest(req, res)
   })
 
-  if (agentObserver) app.use(createDashboardRouter(agentObserver))
+  // A protected MCP port can be reached through ngrok, even when it binds to
+  // loopback. Serve the dashboard separately so it is never on that tunnel.
+  if (agentObserver && !accessToken) app.use(createDashboardRouter(agentObserver))
 
   const httpServer = createServer(app)
   let boundPort: number
+  let dashboardServer: HttpServer | undefined
+  let dashboardUrl: string | undefined
   try {
     await listen(httpServer, port, host)
 
@@ -114,9 +120,22 @@ export async function startMcpHttpServer(
       throw new Error("HTTP server did not expose a TCP address.")
     }
     boundPort = address.port
+
+    if (agentObserver && accessToken) {
+      const localPort = profileOverrides.dashboardPort ?? (port === 0 ? 0 : port + 1)
+      const dashboard = await startLocalDashboard(agentObserver, localPort)
+      dashboardServer = dashboard.server
+      dashboardUrl = dashboard.url
+    } else if (agentObserver) {
+      dashboardUrl = `http://${host}:${boundPort}/`
+    }
   } catch (error) {
     const httpClose = closeHttpServerIfListening(httpServer)
-    await Promise.allSettled([mcpHandler.close(), httpClose])
+    await Promise.allSettled([
+      mcpHandler.close(),
+      httpClose,
+      ...(dashboardServer ? [closeHttpServerIfListening(dashboardServer)] : []),
+    ])
     throw error
   }
 
@@ -125,11 +144,37 @@ export async function startMcpHttpServer(
     host,
     port: boundPort,
     url: `http://${host}:${boundPort}${mcpPath}`,
+    dashboardUrl,
     close: async () => {
       if (closed) return
       closed = true
-      await Promise.allSettled([mcpHandler.close(), closeHttpServerIfListening(httpServer)])
+      await Promise.allSettled([
+        mcpHandler.close(),
+        closeHttpServerIfListening(httpServer),
+        ...(dashboardServer ? [closeHttpServerIfListening(dashboardServer)] : []),
+      ])
     },
+  }
+}
+
+async function startLocalDashboard(
+  observer: AgentObserver,
+  port: number
+): Promise<{ server: HttpServer; url: string }> {
+  const host = "127.0.0.1"
+  const app = createMcpExpressApp({ host, jsonLimit: "1mb" })
+  app.use(createDashboardRouter(observer))
+  const server = createServer(app)
+  try {
+    await listen(server, port, host)
+    const address = server.address()
+    if (!address || typeof address === "string") {
+      throw new Error("Dashboard server did not expose a TCP address.")
+    }
+    return { server, url: `http://${host}:${address.port}/` }
+  } catch (error) {
+    await closeHttpServerIfListening(server)
+    throw error
   }
 }
 

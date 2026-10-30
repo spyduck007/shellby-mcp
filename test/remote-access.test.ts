@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { stat, writeFile } from "node:fs/promises"
 import { join } from "node:path"
 import test from "node:test"
-
+import { createAgentObserver } from "../src/agent/observer.js"
 import {
   ensureMcpAccessToken,
   mcpAccessTokenPath,
@@ -29,7 +29,12 @@ test("protected MCP accepts only its private URL, not public or spoofed paths", 
   const accessToken = await ensureMcpAccessToken(root)
   const authStore = new ShellbyAuthStore(join(root, "auth.json"))
   await authStore.ensureState()
-  const running = await startMcpHttpServer({ accessToken, authStore })
+  const running = await startMcpHttpServer({
+    accessToken,
+    authStore,
+    agentObserver: createAgentObserver(),
+    http: { dashboardPort: 0 },
+  })
   t.after(() => running.close())
 
   const initialize = {
@@ -68,6 +73,12 @@ test("protected MCP accepts only its private URL, not public or spoofed paths", 
     404,
     "the dashboard must not be reachable from the public tunnel"
   )
+  assert.equal((await fetch(`${base}/api/agents`)).status, 404)
+  assert.ok(running.dashboardUrl)
+  assert.equal(new URL(running.dashboardUrl).hostname, "127.0.0.1")
+  const localDashboard = await fetch(new URL("api/agents", running.dashboardUrl))
+  assert.equal(localDashboard.status, 200)
+  assert.deepEqual(await localDashboard.json(), { agents: [] })
   assert.equal((await fetch(`${base}/healthz`)).status, 200)
   assert.equal((await authStore.readState()).subject, null)
 

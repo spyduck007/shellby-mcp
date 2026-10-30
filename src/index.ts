@@ -58,8 +58,7 @@ try {
   throw error
 }
 console.log(`Local shell MCP server listening on http://${running.host}:${running.port}`)
-if (MCP_CONFIG.ui.enabled && !accessToken)
-  console.log(`Agent dashboard: http://${running.host}:${running.port}/`)
+if (running.dashboardUrl) console.log(`Agent dashboard (local only): ${running.dashboardUrl}`)
 console.log(
   accessToken
     ? "Remote MCP access: private capability URL required"

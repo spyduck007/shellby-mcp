@@ -301,7 +301,7 @@ More startup and recovery details are in [Configuration and Startup](wiki/pages/
 
 ## Security
 
-- When ngrok is enabled, MCP requires a randomly generated 256-bit capability in the URL, stored privately at `<state_dir>/mcp-access-token`. The bare `/mcp` route and dashboard are unavailable. `npm run print-url` prints the private URL for ChatGPT; keep it secret.
+- When ngrok is enabled, MCP requires a randomly generated 256-bit capability in the URL, stored privately at `<state_dir>/mcp-access-token`. The bare `/mcp` route and dashboard are unavailable on the tunneled MCP port. The dashboard instead runs on a separate loopback-only port (`<mcp_port> + 1`, e.g. `http://127.0.0.1:3335/` for MCP port 3334). It serves the built UI and live `/api/*` routes without exposing them through ngrok. `npm run print-url` prints the private URL for ChatGPT; keep it secret.
 - The capability URL is **not OAuth or user identity verification**. Anyone who obtains the URL can call the MCP tools. Treat the URL like a password and rotate the token if it leaks. For stronger long-term controls, use OAuth or a private MCP tunnel rather than a public endpoint.
 - When ngrok is disabled, localhost MCP access remains unauthenticated. Do not expose that endpoint through another untrusted proxy.
 - The legacy subject binding in `<state_dir>/auth.json` depends on a trusted proxy inserting `x-shellby-remote`; without that proxy policy, it must not be treated as an authentication boundary.
