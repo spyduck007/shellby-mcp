@@ -1,11 +1,13 @@
 import type { McpServer } from "@modelcontextprotocol/server"
 import type { AgentObserver } from "../agent/observer.js"
 import { buildMcpInstructions, MCP_CONFIG } from "../config.js"
+import type { ExternalMcpManager } from "../external-mcp/manager.js"
 import { registerApplyPatchTool } from "../tools/apply-patch/apply-patch.js"
 import { registerComputerUseTools } from "../tools/computer/computer-tools.js"
 import type { PeekabooClient } from "../tools/computer/peekaboo.js"
 import { registerSubagentTools } from "../tools/delegation/subagent-tools.js"
 import type { Subagents } from "../tools/delegation/subagents.js"
+import { registerExternalMcpTools } from "../tools/external-mcp/external-mcp-tools.js"
 import { registerFileReadTool, registerFileWriteTool } from "../tools/file/file-tools.js"
 import { registerImageTools } from "../tools/image/image-tools.js"
 import { registerReviewTool, reviewPrompt } from "../tools/review/review-tool.js"
@@ -24,6 +26,7 @@ import { ToolCallTracker } from "./tool-call-tracker.js"
 import { createToolRegistrar } from "./tool-registration-boundary.js"
 
 export interface McpCapabilityServices {
+  externalMcp?: ExternalMcpManager
   shellManager?: ShellSessionManager
   subagents?: Subagents
   peekaboo?: PeekabooClient
@@ -87,6 +90,7 @@ function createMcpServer(options: CreateMcpServerOptions, profile: McpRuntimePro
   })
 
   registerStartHereTool(registerTool)
+  if (options.externalMcp) registerExternalMcpTools(registerTool, options.externalMcp)
   const shells = profile.tools.shell
     ? requireCapabilityService(options.shellManager, "shell")
     : undefined

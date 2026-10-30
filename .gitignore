@@ -1,6 +1,7 @@
 node_modules/
 dist/
 /ui/public/icons.svg
+ui/*.tsbuildinfo
 .shellby/*
 .env*
 /agent-commands.md

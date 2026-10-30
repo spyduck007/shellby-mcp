@@ -65,6 +65,7 @@ export async function startMcpHttpServer(options: TestMcpServerOptions = {}) {
     ? (services.subagents ?? createUnavailableSubagents())
     : undefined
   const capabilityServices = {
+    externalMcp: services.externalMcp,
     shellManager,
     peekaboo,
     subagents,
@@ -89,6 +90,7 @@ export async function startMcpHttpServer(options: TestMcpServerOptions = {}) {
         accessToken,
         authStore,
         agentObserver,
+        externalMcp: services.externalMcp,
       },
       { ...http, port }
     )

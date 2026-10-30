@@ -5,6 +5,7 @@ import { createAgentObserver } from "./agent/observer.js"
 import { ensureMcpAccessToken } from "./auth/mcp-access-token.js"
 import { ShellbyAuthStore } from "./auth/store.js"
 import { MCP_CONFIG } from "./config.js"
+import { ExternalMcpManager } from "./external-mcp/manager.js"
 import { createMcpServerFactory } from "./mcp/server-factory.js"
 import { McpAuditLogger } from "./server/audit/audit-log.js"
 import { startMcpHttpServer } from "./server/http-server.js"
@@ -19,6 +20,7 @@ const auditLogPath = fileURLToPath(new URL("../agent-commands.yaml", import.meta
 const auditLogger = new McpAuditLogger(auditLogPath)
 const agentObserver = MCP_CONFIG.ui.enabled ? createAgentObserver() : undefined
 const authStore = new ShellbyAuthStore(join(MCP_CONFIG.stateDir, "auth.json"))
+const externalMcp = new ExternalMcpManager(MCP_CONFIG.stateDir)
 await authStore.ensureState()
 const accessToken = MCP_CONFIG.ngrok.enabled
   ? await ensureMcpAccessToken(MCP_CONFIG.stateDir)
@@ -41,8 +43,12 @@ const shells = MCP_CONFIG.tools.shell
 let running: Awaited<ReturnType<typeof startMcpHttpServer>>
 try {
   await shells?.startDefault()
+  await externalMcp.start().catch((error: unknown) => {
+    console.error("External MCP registry could not be started:", error)
+  })
   running = await startMcpHttpServer({
     createMcpServer: createMcpServerFactory({
+      externalMcp,
       shellManager: shells,
       peekaboo,
       subagents,
@@ -52,6 +58,7 @@ try {
     accessToken,
     authStore,
     agentObserver,
+    externalMcp,
   })
 } catch (error) {
   await closeRuntimeServices()
@@ -95,6 +102,7 @@ async function closeRuntimeServices(): Promise<void> {
     peekaboo?.close(),
     subagents?.dispose(),
     cursorHost?.close(),
+    externalMcp.close(),
   ])
 }
 

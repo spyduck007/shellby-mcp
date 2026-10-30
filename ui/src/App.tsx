@@ -14,8 +14,10 @@ import { RoomEditor } from "./features/agent-room/editor/RoomEditor"
 import { AgentCard } from "./features/dashboard/AgentCard"
 import { groupAgentFamilies } from "./features/dashboard/agent-families"
 import { useDashboardAgents } from "./features/dashboard/useDashboardAgents"
+import { ExternalMcpPage } from "./features/external-mcp/ExternalMcpPage"
 
 export function App() {
+  if (window.location.pathname.replace(/\/+$/u, "") === "/external-mcp") return <ExternalMcpPage />
   const editorRoute =
     window.location.pathname.replace(/\/+$/u, "") === "/editor" ||
     new URLSearchParams(window.location.search).has("editor")
@@ -63,6 +65,9 @@ function Dashboard() {
           {connected ? "Live" : "Reconnecting"}
         </div>
         <ThemeSelect />
+        <Button variant="outline" size="sm" onClick={() => (window.location.href = "/external-mcp")}>
+          MCP Servers
+        </Button>
         <Button variant="outline" size="sm" onClick={() => (window.location.href = "/editor")}>
           <IconPencil className="size-3.5" />
           Edit room

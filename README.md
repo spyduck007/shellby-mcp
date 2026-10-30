@@ -310,6 +310,31 @@ More startup and recovery details are in [Configuration and Startup](wiki/pages/
 
 See [SECURITY.md](SECURITY.md) for reporting and scope.
 
+## External MCP servers
+
+Shellby includes **three additional, fixed tools** (`mcp_list`, `mcp_inspect`, `mcp_call`) to discover and invoke tools on independently configured MCP servers. Installing or enabling more downstream servers does **not** expand Shellby's advertised tool list. The registry starts empty: **no external MCP packages or services are installed or started by this feature** until you explicitly configure and connect one.
+
+With the UI enabled, open the **MCP Servers** page at `http://127.0.0.1:3335/external-mcp` (for this clone's MCP port 3334). Add a server, enable it, inspect its discovered tools, then approve specific tools using the checkboxes before calling them. After approval you can inspect schemas and run a test invocation from the dashboard by supplying JSON arguments. Changing a server configuration disconnects its existing session; a subsequent call or explicit Connect reconnects it. Enabled servers are connected when Shellby starts, so an `npx` server definition could install packages when enabled and started. The dashboard management API is only hosted on the localhost dashboard listener, never the ngrok-facing MCP port. State is saved under `<state_dir>/external-mcp.json` with restrictive file permissions; the file is **not** tracked by Git.
+
+The registry supports local stdio child processes, remote Streamable HTTP (`http`), and legacy SSE (`sse`). Local command arguments are passed directly to the executable, never through a shell. HTTPS is required for remote MCP endpoints except localhost. Environment mappings are variable **references**, not inline secrets: `env` on a stdio server maps the child's variable name to a variable already present in Shellby's process environment. Remote `bearerTokenEnv` selects a process environment variable to use as the Bearer credential. The dashboard does not read or display the values of those variables. Interactive OAuth acquisition and MCP resources/prompts are not currently provided by this three-tool bridge.
+
+Example **registry entry only** (illustrative, not automatically installed or enabled):
+
+```json
+{
+  "id": "example",
+  "name": "Example stdio MCP",
+  "enabled": false,
+  "transport": "stdio",
+  "command": "npx",
+  "args": ["-y", "example-mcp-package", "mcp"],
+  "env": {},
+  "allowedTools": []
+}
+```
+
+**Trust boundary:** Enabling a third-party server may run its code on your Mac or connect to a third-party host. Inspect the package, executable, endpoints, and tool descriptions before enabling it; approving a tool permits Shellby to call it with your account's rights. Treat external descriptions and results as untrusted. The shared manager applies request timeouts, a 1 MB result cap, tool allowlists, explicit environment-variable forwarding, and closes its owned sessions when Shellby shuts down. The local dashboard only accepts same-origin JSON mutation requests. Keep sensitive tool parameters out of unnecessary logs, as MCP calls can be recorded in Shellby's audit history.
+
 ## Development
 
 ```bash

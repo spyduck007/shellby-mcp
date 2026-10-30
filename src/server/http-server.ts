@@ -10,6 +10,7 @@ import type { AgentObserver } from "../agent/observer.js"
 import { protectedMcpPath } from "../auth/mcp-access-token.js"
 import { ShellbyAuthError, type ShellbyAuthStore } from "../auth/store.js"
 import { MCP_CONFIG } from "../config.js"
+import type { ExternalMcpManager } from "../external-mcp/manager.js"
 import type { McpServerFactory } from "../mcp/server-factory.js"
 import { ToolCallTracker } from "../mcp/tool-call-tracker.js"
 import { asRecord } from "../utils.js"
@@ -27,6 +28,7 @@ export interface RunningMcpServer {
 
 export interface McpHttpServices {
   createMcpServer: McpServerFactory
+  externalMcp?: ExternalMcpManager
   accessToken?: string
   auditLogger?: McpAuditLogger
   authStore?: ShellbyAuthStore
@@ -47,7 +49,8 @@ export async function startMcpHttpServer(
   const host = profileOverrides.host ?? MCP_CONFIG.host
   const port = profileOverrides.port ?? MCP_CONFIG.port
   const instanceId = profileOverrides.instanceId ?? MCP_CONFIG.instanceId
-  const { createMcpServer, accessToken, auditLogger, authStore, agentObserver } = services
+  const { createMcpServer, externalMcp, accessToken, auditLogger, authStore, agentObserver } =
+    services
   const mcpPath = accessToken ? protectedMcpPath(accessToken) : "/mcp"
   const requestCalls = new AsyncLocalStorage<ToolCallTracker>()
 
@@ -106,7 +109,7 @@ export async function startMcpHttpServer(
 
   // A protected MCP port can be reached through ngrok, even when it binds to
   // loopback. Serve the dashboard separately so it is never on that tunnel.
-  if (agentObserver && !accessToken) app.use(createDashboardRouter(agentObserver))
+  if (agentObserver && !accessToken) app.use(createDashboardRouter(agentObserver, externalMcp))
 
   const httpServer = createServer(app)
   let boundPort: number
@@ -123,7 +126,7 @@ export async function startMcpHttpServer(
 
     if (agentObserver && accessToken) {
       const localPort = profileOverrides.dashboardPort ?? (port === 0 ? 0 : port + 1)
-      const dashboard = await startLocalDashboard(agentObserver, localPort)
+      const dashboard = await startLocalDashboard(agentObserver, localPort, externalMcp)
       dashboardServer = dashboard.server
       dashboardUrl = dashboard.url
     } else if (agentObserver) {
@@ -159,11 +162,12 @@ export async function startMcpHttpServer(
 
 async function startLocalDashboard(
   observer: AgentObserver,
-  port: number
+  port: number,
+  externalMcp?: ExternalMcpManager
 ): Promise<{ server: HttpServer; url: string }> {
   const host = "127.0.0.1"
   const app = createMcpExpressApp({ host, jsonLimit: "1mb" })
-  app.use(createDashboardRouter(observer))
+  app.use(createDashboardRouter(observer, externalMcp))
   const server = createServer(app)
   try {
     await listen(server, port, host)

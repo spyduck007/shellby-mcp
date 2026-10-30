@@ -1,13 +1,18 @@
 import { fileURLToPath } from "node:url"
 import { static as expressStatic, Router } from "express"
-
+import { createExternalMcpDashboardRouter } from "../external-mcp/dashboard-router.js"
+import type { ExternalMcpManager } from "../external-mcp/manager.js"
 import type { AgentObserver } from "./observer.js"
 
 const LEADING_URL_SEPARATORS = /^[\\/]+/u
 
 /** Mount at the server root: dashboard assets, `/editor`, and `/api/*`. */
-export function createDashboardRouter(agentObserver: AgentObserver): Router {
+export function createDashboardRouter(
+  agentObserver: AgentObserver,
+  externalMcp?: ExternalMcpManager
+): Router {
   const router = Router()
+  if (externalMcp) router.use(createExternalMcpDashboardRouter(externalMcp))
 
   // Preserve bookmarks, saved room asset URLs, and in-flight API clients from the /ui mount.
   // A 308 preserves request methods/bodies; a single leading slash keeps redirects on this host.
@@ -62,6 +67,9 @@ export function createDashboardRouter(agentObserver: AgentObserver): Router {
 
   const dashboardDir = fileURLToPath(new URL("../../ui/dist/", import.meta.url))
   router.get("/editor", (_req, res) => {
+    res.sendFile(fileURLToPath(new URL("../../ui/dist/index.html", import.meta.url)))
+  })
+  router.get("/external-mcp", (_req, res) => {
     res.sendFile(fileURLToPath(new URL("../../ui/dist/index.html", import.meta.url)))
   })
   router.use(expressStatic(dashboardDir, { index: "index.html" }))

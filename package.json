@@ -43,7 +43,7 @@
     "test:live:subagent": "RUN_LIVE_SUBAGENT_TESTS=1 tsx --test test/live/subagent-live.test.ts",
     "test:live:subagent:fork": "RUN_LIVE_SUBAGENT_TESTS=1 LIVE_SUBAGENT_FORK=1 tsx --test test/live/subagent-live.test.ts",
     "test:live:subagent:fresh": "RUN_LIVE_SUBAGENT_TESTS=1 LIVE_SUBAGENT_START=fresh tsx --test test/live/subagent-live.test.ts",
-    "test:ui": "npm run ui:build && RUN_UI_TESTS=1 tsx --test test/ui/dashboard.test.ts",
+    "test:ui": "npm run ui:build && RUN_UI_TESTS=1 tsx --test test/ui/dashboard.test.ts test/ui/external-mcp-dashboard.test.ts",
     "tunnel": "ngrok http 3334 --url=https://telepathic-noncombinative-emmett.ngrok-free.dev --host-header=localhost:3334",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ui:build": "npm --prefix ui run build",
@@ -61,6 +61,7 @@
     }
   },
   "dependencies": {
+    "@modelcontextprotocol/client": "^2.3.0",
     "@modelcontextprotocol/express": "^2.0.2",
     "@modelcontextprotocol/node": "^2.1.1",
     "@modelcontextprotocol/server": "^2.2.0",
@@ -79,7 +80,6 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "@modelcontextprotocol/client": "^2.3.0",
     "@types/express": "^5.0.6",
     "@types/node": "22.18.13",
     "json-schema-to-openai-typescript": "^0.3.1",
