@@ -93,12 +93,12 @@ Google Chrome is optional and is used for browser-backed subagents. Computer Use
    npm start
    ```
 
-   This creates or reuses the repository-local PM2 runtime, starts Shellby MCP and ngrok, launches the configured ChatGPT browser when agent tools are enabled, waits for local health, and prints the public `/mcp` URL. Starting from Terminal.app gives the managed process tree the intended macOS permission context for Computer Use.
+   This creates or reuses the repository-local PM2 runtime, starts Shellby MCP and ngrok, launches the configured ChatGPT browser when agent tools are enabled, waits for local health, and prints a private MCP URL. Starting from Terminal.app gives the managed process tree the intended macOS permission context for Computer Use.
 
-6. In ChatGPT Developer Mode, create a custom MCP app with the printed `https://.../mcp` URL and select **No Auth**.
+6. In ChatGPT Developer Mode, create a custom MCP app with the exact printed `https://.../mcp/<private-token>` URL and select **No Auth**. If upgrading from a previous `/mcp` connection, update or recreate that connection using the new URL. Do not share the URL: it is an access credential.
 
 > [!IMPORTANT]
-> The first trusted remote tool call binds the installation to that ChatGPT subject. Use `npm run auth:reset` only when you intend to clear that binding.
+> Keep the private MCP URL out of screenshots, logs, and public messages. The URL grants access to Shellby tools; `npm run auth:reset` only clears the legacy ChatGPT-subject binding, not the private URL token.
 
 ### Verify the installation
 
@@ -301,9 +301,10 @@ More startup and recovery details are in [Configuration and Startup](wiki/pages/
 
 ## Security
 
-- The checked-in ngrok traffic policy exposes the local MCP endpoint to ChatGPT.
-- Direct localhost MCP access is unauthenticated. Do not expose the local endpoint through another untrusted proxy.
-- Trusted remote tool calls are bound to the first ChatGPT subject stored in `<state_dir>/auth.json`.
+- When ngrok is enabled, MCP requires a randomly generated 256-bit capability in the URL, stored privately at `<state_dir>/mcp-access-token`. The bare `/mcp` route and dashboard are unavailable. `npm run print-url` prints the private URL for ChatGPT; keep it secret.
+- The capability URL is **not OAuth or user identity verification**. Anyone who obtains the URL can call the MCP tools. Treat the URL like a password and rotate the token if it leaks. For stronger long-term controls, use OAuth or a private MCP tunnel rather than a public endpoint.
+- When ngrok is disabled, localhost MCP access remains unauthenticated. Do not expose that endpoint through another untrusted proxy.
+- The legacy subject binding in `<state_dir>/auth.json` depends on a trusted proxy inserting `x-shellby-remote`; without that proxy policy, it must not be treated as an authentication boundary.
 - The dedicated authenticated Chrome profile is part of the trust boundary for browser subagents.
 - `agent-commands.yaml` can contain sensitive tool inputs. It is gitignored and permission-restricted and should be treated as private.
 

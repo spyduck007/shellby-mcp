@@ -7,6 +7,7 @@ import type { Request, Response } from "express"
 import { runWithAgent } from "../agent/context.js"
 import { createDashboardRouter } from "../agent/dashboard-routes.js"
 import type { AgentObserver } from "../agent/observer.js"
+import { protectedMcpPath } from "../auth/mcp-access-token.js"
 import { ShellbyAuthError, type ShellbyAuthStore } from "../auth/store.js"
 import { MCP_CONFIG } from "../config.js"
 import type { McpServerFactory } from "../mcp/server-factory.js"
@@ -25,6 +26,7 @@ export interface RunningMcpServer {
 
 export interface McpHttpServices {
   createMcpServer: McpServerFactory
+  accessToken?: string
   auditLogger?: McpAuditLogger
   authStore?: ShellbyAuthStore
   agentObserver?: AgentObserver
@@ -43,10 +45,19 @@ export async function startMcpHttpServer(
   const host = profileOverrides.host ?? MCP_CONFIG.host
   const port = profileOverrides.port ?? MCP_CONFIG.port
   const instanceId = profileOverrides.instanceId ?? MCP_CONFIG.instanceId
-  const { createMcpServer, auditLogger, authStore, agentObserver } = services
+  const { createMcpServer, accessToken, auditLogger, authStore, agentObserver } = services
+  const mcpPath = accessToken ? protectedMcpPath(accessToken) : "/mcp"
   const requestCalls = new AsyncLocalStorage<ToolCallTracker>()
 
   const app = createMcpExpressApp({ host, jsonLimit: "1mb" })
+  if (accessToken) {
+    // ngrok connects from loopback too, so source IP and forwarded headers cannot
+    // distinguish a local request from an anonymous public request.
+    app.use((req, res, next) => {
+      if (req.path === "/healthz" || req.path === mcpPath) return next()
+      res.sendStatus(404)
+    })
+  }
   const mcpHandler = createMcpHandler(
     () => createMcpServer({ calls: requestCalls.getStore(), agentObserver }),
     {
@@ -74,7 +85,7 @@ export async function startMcpHttpServer(
     })
   }
 
-  app.all(MCP_ROUTE, async (req: Request, res: Response) => {
+  app.all(accessToken ? mcpPath : MCP_ROUTE, async (req: Request, res: Response) => {
     if (
       req.method === "POST" &&
       authStore &&
@@ -113,7 +124,7 @@ export async function startMcpHttpServer(
   return {
     host,
     port: boundPort,
-    url: `http://${host}:${boundPort}/mcp`,
+    url: `http://${host}:${boundPort}${mcpPath}`,
     close: async () => {
       if (closed) return
       closed = true

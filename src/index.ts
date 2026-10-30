@@ -2,6 +2,7 @@ import { join } from "node:path"
 import process from "node:process"
 import { fileURLToPath } from "node:url"
 import { createAgentObserver } from "./agent/observer.js"
+import { ensureMcpAccessToken } from "./auth/mcp-access-token.js"
 import { ShellbyAuthStore } from "./auth/store.js"
 import { MCP_CONFIG } from "./config.js"
 import { createMcpServerFactory } from "./mcp/server-factory.js"
@@ -19,6 +20,9 @@ const auditLogger = new McpAuditLogger(auditLogPath)
 const agentObserver = MCP_CONFIG.ui.enabled ? createAgentObserver() : undefined
 const authStore = new ShellbyAuthStore(join(MCP_CONFIG.stateDir, "auth.json"))
 await authStore.ensureState()
+const accessToken = MCP_CONFIG.ngrok.enabled
+  ? await ensureMcpAccessToken(MCP_CONFIG.stateDir)
+  : undefined
 const subagents = MCP_CONFIG.tools.subagents ? createSubagents() : undefined
 const peekaboo = MCP_CONFIG.tools.computer ? new PeekabooClient({ localOnly: true }) : undefined
 const webPageOpener = MCP_CONFIG.tools.web ? new WebPageOpener() : undefined
@@ -45,6 +49,7 @@ try {
       webPageOpener,
     }),
     auditLogger,
+    accessToken,
     authStore,
     agentObserver,
   })
@@ -52,9 +57,14 @@ try {
   await closeRuntimeServices()
   throw error
 }
-console.log(`Local shell MCP server: ${running.url}`)
-if (MCP_CONFIG.ui.enabled) console.log(`Agent dashboard: http://${running.host}:${running.port}/`)
-console.log("Remote MCP authentication: trusted ChatGPT origin + bound OpenAI subject")
+console.log(`Local shell MCP server listening on http://${running.host}:${running.port}`)
+if (MCP_CONFIG.ui.enabled && !accessToken)
+  console.log(`Agent dashboard: http://${running.host}:${running.port}/`)
+console.log(
+  accessToken
+    ? "Remote MCP access: private capability URL required"
+    : "Remote MCP access: disabled (local use only)"
+)
 console.log(`Default workspace: ${MCP_CONFIG.workspace}`)
 console.log(
   `Shell tools: ${shells ? `enabled (${MCP_CONFIG.shell.path}, max ${shells.maximumShells})` : "disabled"}`

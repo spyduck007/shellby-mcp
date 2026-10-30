@@ -308,7 +308,7 @@ test("reports broken TOML syntax without rewriting the file or silently replacin
   }
 })
 
-test("PM2 uses normalized ngrok settings from the shared loader", async (t) => {
+test("PM2 launches ngrok with the working manual tunnel arguments", async (t) => {
   const root = await tempDir(t, "shellby-config-pm2-")
   const { configPath } = await initializeShellbyConfig(root)
   t.mock.method(console, "warn", () => undefined)
@@ -324,17 +324,17 @@ test("PM2 uses normalized ngrok settings from the shared loader", async (t) => {
     module,
     require(name: string) {
       if (name === "./dist/public-config.cjs") return { loadPublicConfig }
-      if (name === "./scripts/ngrok-config.cjs")
-        return { ngrokConfigFiles: () => ["/fake/native.yml", "/fake/override.json"] }
       if (name === "node:child_process") return { execFileSync: () => "/fake/ngrok" }
       return nodeRequire(name)
     },
   })
   const ngrok = module.exports.apps.find((app) => app.name === "shellby-ngrok")!
-  assert.ok(ngrok.args.includes("https://custom.ngrok.app"))
-  assert.ok(ngrok.args.includes("http://127.0.0.1:3334"))
-  assert.ok(ngrok.args.includes("/fake/override.json"))
-  assert.equal(ngrok.args.includes("--pooling-enabled"), false)
+  assert.deepEqual(Array.from(ngrok.args), [
+    "http",
+    "3334",
+    "--url=https://custom.ngrok.app",
+    "--host-header=localhost:3334",
+  ])
 })
 
 test("ngrok enablement defaults on, accepts false, and preserves reserved settings", async (t) => {

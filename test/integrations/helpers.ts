@@ -21,6 +21,7 @@ import { readStartHereIdentity } from "../../src/tools/start-here/start-here.js"
 import { WebPageOpener } from "../../src/tools/web/web-open.js"
 
 type TestMcpServerOptions = Partial<McpCapabilityServices> & {
+  accessToken?: string
   port?: number
   http?: McpHttpProfileOverrides
   profile?: McpRuntimeProfileOverrides
@@ -43,7 +44,16 @@ const TEST_TOOLS = {
 } satisfies McpRuntimeProfileOverrides["tools"]
 
 export async function startMcpHttpServer(options: TestMcpServerOptions = {}) {
-  const { port = 0, http, profile, auditLogger, authStore, agentObserver, ...services } = options
+  const {
+    port = 0,
+    http,
+    profile,
+    auditLogger,
+    authStore,
+    agentObserver,
+    accessToken,
+    ...services
+  } = options
   const tools = { ...TEST_TOOLS, ...profile?.tools }
   const shellManager = tools.shell
     ? (services.shellManager ?? createShellSessionManager())
@@ -76,6 +86,7 @@ export async function startMcpHttpServer(options: TestMcpServerOptions = {}) {
           tools,
         }),
         auditLogger,
+        accessToken,
         authStore,
         agentObserver,
       },

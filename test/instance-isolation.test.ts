@@ -14,6 +14,19 @@ import { startMcpHttpServer } from "../src/server/http-server.js"
 import { tempDir } from "./helpers/temp.js"
 
 const run = promisify(execFile)
+const testAccessToken = "a".repeat(64)
+
+async function copyPrintUrlScript(root: string): Promise<void> {
+  await mkdir(join(root, "src", "auth"), { recursive: true })
+  await copyFile(
+    new URL("../scripts/print-url.ts", import.meta.url),
+    join(root, "scripts/print-url.ts")
+  )
+  await copyFile(
+    new URL("../src/auth/mcp-access-token.ts", import.meta.url),
+    join(root, "src/auth/mcp-access-token.ts")
+  )
+}
 const { ngrokConfigFiles } = createRequire(import.meta.url)("../scripts/ngrok-config.cjs") as {
   ngrokConfigFiles(
     config: { state_dir: string; ngrok: { api_port: number } },
@@ -96,23 +109,18 @@ test("print-url uses this copy's ngrok API and filters other upstreams and domai
   await mkdir(join(root, "scripts", "chatgpt"), { recursive: true })
   await mkdir(join(root, "src"))
   await writeFile(join(root, "package.json"), '{"type":"module"}\n')
-  await copyFile(
-    new URL("../scripts/print-url.ts", import.meta.url),
-    join(root, "scripts/print-url.ts")
-  )
+  await copyPrintUrlScript(root)
+  await writeFile(join(root, "mcp-access-token"), `${testAccessToken}\n`)
   await writeFile(
     join(root, "src/config.ts"),
-    `export const MCP_CONFIG = ${JSON.stringify({ host: "127.0.0.1", port: 3334, ngrok: { enabled: true, apiPort: address.port, url: "https://second.ngrok.app" }, ui: { enabled: true } })}`
+    `export const MCP_CONFIG = ${JSON.stringify({ host: "127.0.0.1", port: 3334, stateDir: root, ngrok: { enabled: true, apiPort: address.port, url: "https://second.ngrok.app" }, ui: { enabled: true } })}`
   )
   const result = await run(
     process.execPath,
     ["--import", "tsx", join(root, "scripts/print-url.ts"), "--optional"],
     { timeout: 10_000 }
   )
-  assert.equal(
-    result.stdout.trim(),
-    "MCP URL: https://second.ngrok.app/mcp\nUI URL: http://127.0.0.1:3334/"
-  )
+  assert.equal(result.stdout.trim(), `MCP URL: https://second.ngrok.app/mcp/${testAccessToken}`)
   assert.equal(requests, 1)
 })
 
@@ -121,10 +129,7 @@ test("print-url reports the configured local address without contacting ngrok wh
   await mkdir(join(root, "scripts", "chatgpt"), { recursive: true })
   await mkdir(join(root, "src"))
   await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }))
-  await copyFile(
-    new URL("../scripts/print-url.ts", import.meta.url),
-    join(root, "scripts/print-url.ts")
-  )
+  await copyPrintUrlScript(root)
   await writeFile(
     join(root, "src/config.ts"),
     'export const MCP_CONFIG = { host: "127.0.0.1", port: 3334, ngrok: { enabled: false }, ui: { enabled: false } }'
@@ -148,10 +153,7 @@ test("print-url also prints the local UI URL when enabled", async (t) => {
   await mkdir(join(root, "scripts", "chatgpt"), { recursive: true })
   await mkdir(join(root, "src"))
   await writeFile(join(root, "package.json"), JSON.stringify({ type: "module" }))
-  await copyFile(
-    new URL("../scripts/print-url.ts", import.meta.url),
-    join(root, "scripts/print-url.ts")
-  )
+  await copyPrintUrlScript(root)
   await writeFile(
     join(root, "src/config.ts"),
     'export const MCP_CONFIG = { host: "127.0.0.1", port: 3334, ngrok: { enabled: false }, ui: { enabled: true } }'

@@ -44,7 +44,7 @@
     "test:live:subagent:fork": "RUN_LIVE_SUBAGENT_TESTS=1 LIVE_SUBAGENT_FORK=1 tsx --test test/live/subagent-live.test.ts",
     "test:live:subagent:fresh": "RUN_LIVE_SUBAGENT_TESTS=1 LIVE_SUBAGENT_START=fresh tsx --test test/live/subagent-live.test.ts",
     "test:ui": "npm run ui:build && RUN_UI_TESTS=1 tsx --test test/ui/dashboard.test.ts",
-    "tunnel": "ngrok http 3333 --url=https://telepathic-noncombinative-emmett.ngrok-free.dev --host-header=localhost:3333",
+    "tunnel": "ngrok http 3334 --url=https://telepathic-noncombinative-emmett.ngrok-free.dev --host-header=localhost:3334",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "ui:build": "npm --prefix ui run build",
     "ui:dev": "npm --prefix ui run dev",

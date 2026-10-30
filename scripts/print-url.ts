@@ -1,4 +1,6 @@
+import { readFile } from "node:fs/promises"
 import process from "node:process"
+import { mcpAccessTokenPath, protectedMcpPath } from "../src/auth/mcp-access-token.js"
 import { MCP_CONFIG } from "../src/config.js"
 
 const optional = process.argv.includes("--optional")
@@ -10,7 +12,13 @@ if (!MCP_CONFIG.ngrok.enabled) {
 const url = await discoverNgrokUrl(optional ? 1 : 20)
 
 if (url) {
-  console.log(`MCP URL: ${url}`)
+  try {
+    const token = (await readFile(mcpAccessTokenPath(MCP_CONFIG.stateDir), "utf8")).trim()
+    console.log(`MCP URL: ${url.replace(/\/mcp$/u, protectedMcpPath(token))}`)
+  } catch {
+    console.error("MCP access token unavailable. Start Shellby before printing its public URL.")
+    process.exitCode = 1
+  }
 } else {
   console.error(
     "MCP URL unavailable. Run `npm start` from Terminal.app, then check `npm run status` and `npm run logs` if it is still unavailable."
@@ -60,7 +68,7 @@ async function discoverNgrokUrl(attempts: number, attempt = 1): Promise<string |
 }
 
 function printUiUrl(): void {
-  if (!MCP_CONFIG.ui.enabled) return
+  if (!MCP_CONFIG.ui.enabled || MCP_CONFIG.ngrok.enabled) return
   console.log(`UI URL: http://${MCP_CONFIG.host}:${MCP_CONFIG.port}/`)
 }
 
