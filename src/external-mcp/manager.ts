@@ -9,6 +9,7 @@ import {
 } from "@modelcontextprotocol/client"
 import { getDefaultEnvironment, StdioClientTransport } from "@modelcontextprotocol/client/stdio"
 import { ExternalMcpRegistry, type ExternalServerDefinition, serverDefinition } from "./registry.js"
+import { fitExternalMcpResult } from "./result-images.js"
 
 type Connection = { client: Client; tools?: Tool[]; definition: ExternalServerDefinition }
 type Status = {
@@ -107,10 +108,9 @@ export class ExternalMcpManager {
       { name: toolName, arguments: args },
       { signal, timeout: timeoutMs }
     )
-    // Protect ChatGPT responses and the local audit log from unlimited remote output.
-    const size = Buffer.byteLength(JSON.stringify(result), "utf8")
-    if (size > 1_000_000) throw new Error("External MCP result exceeds the 1 MB response limit")
-    return result
+    // Preserve native MCP image blocks but fit large previews into the existing
+    // response budget. Never relax the cap for arbitrary text or structured data.
+    return fitExternalMcpResult(result)
   }
 
   async connect(id: string): Promise<void> {
