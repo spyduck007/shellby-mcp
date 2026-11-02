@@ -1,5 +1,6 @@
 node_modules/
 dist/
+/.playwright-mcp/
 /ui/public/icons.svg
 ui/*.tsbuildinfo
 .shellby/*
